@@ -1,6 +1,6 @@
-%% ISC 3222 - Lab 5: Particle Swarm Optimization
-% This script implements a Particle Swarm Optimizer to find the maximum
-% of a given evaluation function and visualizes the process.
+%% ISC 3222 - Lab 5: Particle Swarm Optimization (Subplot Version)
+% This script implements a PSO and visualizes the static function, 2D 
+% animation, and 3D animation together in a single figure window.
 
 % Clear workspace, command window, and close all figures
 clear;
@@ -13,8 +13,8 @@ close all;
 f = @(x,y) -x.^2 + 2.*cos(pi.*x) - y.^2 - sin(pi.*y);
 
 
-%% Exercise 2: Plot the Evaluation Function
-% To visualize the problem space, we create a 3D surface plot.
+%% Exercise 2: Prepare Data for Plotting
+% To visualize the problem space, we generate the grid data for the surface.
 
 % Generate 100 linearly spaced points for x and y axes
 x_grid = linspace(-4, 4, 100);
@@ -25,16 +25,6 @@ y_grid = linspace(-4, 4, 100);
 
 % Calculate the z value (score) for each point on the grid
 Z = f(X, Y);
-
-% Plot the surface
-figure('Name', 'Evaluation Function Surface');
-surf(X, Y, Z);
-shading interp; % Smooths the coloring
-colorbar;
-title('3D Surface of the Evaluation Function f(x,y)');
-xlabel('Parameter x');
-ylabel('Parameter y');
-zlabel('Score f(x,y)');
 
 
 %% Exercise 3: Implement the Particle Swarm Optimizer
@@ -52,7 +42,6 @@ w = linspace(0.8, 0, n_steps);
 
 % --- Initialization ---
 % Initialize positions randomly within the search space
-% pos is a 10x2 matrix: [x1, y1; x2, y2; ...]
 pos = (bounds(2) - bounds(1)) * rand(n, 2) + bounds(1);
 
 % Initialize velocities to zero for all particles
@@ -67,20 +56,29 @@ bstScores = f(pos(:,1), pos(:,2));
 bstScoreG = max_score;
 bstPosG = pos(idx, :);
 
-% Store history for plotting
-pos_history = zeros(n, 2, n_steps);
 
-% --- Setup for Movies (Exercises 4, 5, 6) ---
-% Setup for 2D movie
-fig2D = figure('Name', '2D PSO Animation');
-vid2D = VideoWriter('pso_2d_animation.mp4', 'MPEG-4');
-open(vid2D);
+%% Setup for Combined Figure and Movie
+% Create a single, wide figure to hold all three subplots.
+main_fig = figure('Name', 'PSO Visualization Dashboard', 'Position', [50 50 1600 600]);
 
-% Setup for 3D movie
-fig3D = figure('Name', '3D PSO Animation');
-set(fig3D, 'Position', [50, 50, 900, 700]); % Make window larger
-vid3D = VideoWriter('pso_3d_animation.mp4', 'MPEG-4');
-open(vid3D);
+% Setup for a single movie file that captures the entire figure
+vidDashboard = VideoWriter('pso_dashboard_animation.mp4', 'MPEG-4');
+open(vidDashboard);
+
+% --- Plot the static reference surface on the first subplot ---
+ax1 = subplot(1, 3, 1, 'Parent', main_fig);
+surf(ax1, X, Y, Z);
+shading(ax1, 'interp');
+colorbar(ax1);
+title(ax1, 'Static Evaluation Function');
+xlabel(ax1, 'Parameter x');
+ylabel(ax1, 'Parameter y');
+zlabel(ax1, 'Score f(x,y)');
+view(ax1, -35, 30); % Set a nice fixed view
+
+% --- Get handles for the animation subplots ---
+ax2 = subplot(1, 3, 2, 'Parent', main_fig);
+ax3 = subplot(1, 3, 3, 'Parent', main_fig);
 
 
 % --- Main Optimization Loop ---
@@ -91,7 +89,6 @@ for t = 1:n_steps
     rg = rand(n, 2);
     
     % Update velocity using the PSO formula
-    % Note: Modern MATLAB implicitly expands bstPosG to match dimensions
     vel = w(t).*vel ...
         + cp.*rp.*(bstPos - pos) ...
         + cg.*rg.*(bstPosG - pos);
@@ -100,85 +97,67 @@ for t = 1:n_steps
     pos = pos + vel;
     
     % --- Boundary Handling ---
-    % If particles go beyond the [-4, 4] bounds, clamp them to the boundary.
     pos(pos < bounds(1)) = bounds(1);
     pos(pos > bounds(2)) = bounds(2);
     
     % Evaluate scores at new positions
     new_scores = f(pos(:,1), pos(:,2));
     
-    % Update personal best positions
+    % Update personal and global best positions
     update_idx = new_scores > bstScores;
     bstScores(update_idx) = new_scores(update_idx);
     bstPos(update_idx,:) = pos(update_idx,:);
     
-    % Update global best position
     [max_step_score, idx] = max(bstScores);
     if max_step_score > bstScoreG
         bstScoreG = max_step_score;
         bstPosG = bstPos(idx, :);
     end
     
-    % Store current positions for the movie
-    pos_history(:,:,t) = pos;
-    
-    % --- Frame Generation for 2D Movie (Exercise 4) ---
-    figure(fig2D);
-    clf;
-    contour(X, Y, Z, 20); % Background context
-    hold on;
-    plot(pos(:,1), pos(:,2), 'b.', 'MarkerSize', 20); % Particles
-    plot(bstPosG(1), bstPosG(2), 'r*', 'MarkerSize', 15); % Global best
-    hold off;
-    xlim(bounds);
-    ylim(bounds);
-    title(sprintf('2D Particle Positions (Step: %d / %d)', t, n_steps));
-    xlabel('Parameter x');
-    ylabel('Parameter y');
-    legend('Function Contour', 'Particles', 'Global Best');
-    drawnow;
-    
-    % Write frame to 2D video
-    frame = getframe(fig2D);
-    writeVideo(vid2D, frame);
+    % --- Update 2D Animation (Exercise 4) ---
+    cla(ax2); % Clear the second subplot
+    contour(ax2, X, Y, Z, 20);
+    hold(ax2, 'on');
+    plot(ax2, pos(:,1), pos(:,2), 'b.', 'MarkerSize', 20);
+    plot(ax2, bstPosG(1), bstPosG(2), 'r*', 'MarkerSize', 15);
+    hold(ax2, 'off');
+    xlim(ax2, bounds);
+    ylim(ax2, bounds);
+    title(ax2, sprintf('2D Particle Positions (Step: %d)', t));
+    xlabel(ax2, 'Parameter x');
+    ylabel(ax2, 'Parameter y');
+    legend(ax2, 'Contour', 'Particles', 'Global Best', 'Location', 'southwest');
 
-    % --- Frame Generation for 3D Movie (Exercises 5 & 6) ---
-    figure(fig3D);
-    clf;
-    surf(X, Y, Z, 'FaceAlpha', 0.6, 'EdgeColor', 'none'); % Surface
-    hold on;
-    % Get z-values for current particle positions
+    % --- Update 3D Animation (Exercises 5 & 6) ---
+    cla(ax3); % Clear the third subplot
+    surf(ax3, X, Y, Z, 'FaceAlpha', 0.6, 'EdgeColor', 'none');
+    hold(ax3, 'on');
     z_pos = f(pos(:,1), pos(:,2));
-    plot3(pos(:,1), pos(:,2), z_pos, 'k.', 'MarkerSize', 25); % Particles on surface
-    plot3(bstPosG(1), bstPosG(2), bstScoreG, 'r*', 'MarkerSize', 15, 'LineWidth', 2); % Global best
-    hold off;
-    title(sprintf('3D Particle Positions (Step: %d / %d)', t, n_steps));
-    xlabel('Parameter x');
-    ylabel('Parameter y');
-    zlabel('Score f(x,y)');
-    legend('', 'Particles', 'Global Best');
-    zlim([min(Z(:))-2, max(Z(:))+2]); % Set z-limits
+    plot3(ax3, pos(:,1), pos(:,2), z_pos, 'k.', 'MarkerSize', 25);
+    plot3(ax3, bstPosG(1), bstPosG(2), bstScoreG, 'r*', 'MarkerSize', 15, 'LineWidth', 2);
+    hold(ax3, 'off');
+    title(ax3, sprintf('3D Particle Positions (Step: %d)', t));
+    xlabel(ax3, 'Parameter x');
+    ylabel(ax3, 'Parameter y');
+    zlabel(ax3, 'Score f(x,y)');
+    zlim(ax3, [min(Z(:))-2, max(Z(:))+2]);
     
-    % Change the viewing perspective for an interesting movie
-    az = 120 * cos(t / n_steps * 2 * pi) - 30; % Azimuth rotates
-    el = 25; % Elevation is fixed
-    view(az, el); % Apply the new view
+    % Slowly change the viewing perspective
+    az = 120 * cos(t / n_steps * 2 * pi) - 30;
+    el = 25;
+    view(ax3, az, el);
     
+    % --- Capture the entire figure as one movie frame ---
     drawnow;
-    
-    % Write frame to 3D video
-    frame = getframe(fig3D);
-    writeVideo(vid3D, frame);
-    
+    frame = getframe(main_fig);
+    writeVideo(vidDashboard, frame);
 end
 
 % --- Finalization ---
-% Close the video files
-close(vid2D);
-close(vid3D);
+close(vidDashboard);
 
 % Display the final results in the Command Window
 fprintf('\n--- Optimization Complete ---\n');
 fprintf('Found maximum score: %.4f\n', bstScoreG);
 fprintf('at parameters (x, y) = (%.4f, %.4f)\n', bstPosG(1), bstPosG(2));
-disp('Movies "pso_2d_animation.mp4" and "pso_3d_animation.mp4" have been saved.');
+disp('Movie "pso_dashboard_animation.mp4" has been saved.');
