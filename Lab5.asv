@@ -2,7 +2,7 @@
 % This script implements a PSO and visualizes the static function, 2D 
 % animation, and 3D animation together in a single figure window.
 
-% Initial AI (GEMINI 2.5 PRO) Prompt to Generate this Project: Create a complete MATLAB script that
+% Initial AI Prompt to Generate this Project: Create a complete MATLAB script that
 % uses Particle Swarm Optimization (PSO) to find the maximum of the function
 % f(x,y) = -x^2 + 2*cos(pi*x) - y^2 - sin(pi*y). (File was attached)
 
